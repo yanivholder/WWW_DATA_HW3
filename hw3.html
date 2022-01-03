@@ -76,12 +76,12 @@
 
     let map = L.map('map').setView(default_location, regular_view_dist);
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoib2ZpcmFzdWxpbjMiLCJhIjoiY2t4YWwzMXo4MGlmNDJvbXd2azFodzd4ciJ9.yw08hD-wossSoLjZkqzkSA', {
-        // attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 18,
         id: 'mapbox/streets-v11',
         tileSize: 512,
         zoomOffset: -1
     }).addTo(map);
+
     let layer_group = L.layerGroup();
 
     let table = new Tabulator("#tabulator_table", {
@@ -132,15 +132,22 @@
                     table.setData(results.data);
                     layer_group.clearLayers();
                     for (let row of results.data) {
-                        let marker = L.marker([row.latitude, row.longitude], {title: row.name});
-                        marker.on('click', function (e) {
-                            let lat = e.latlng.lat;
-                            let lng = e.latlng.lng;
-                            map.setView([lat, lng], 15);
-                        });
-                        layer_group.addLayer(marker);
+                        if(row.latitude && row.longitude) {
+                            let marker = L.marker([row.latitude, row.longitude], {title: row.name});
+                            marker.on('click', function (e) {
+                                let lat = e.latlng.lat;
+                                let lng = e.latlng.lng;
+                                map.setView([lat, lng], 15);
+                            });
+                            layer_group.addLayer(marker);
+                        }
                     }
                     map.addLayer(layer_group);
+                    map.on('movestart',function (e)
+                    {
+                        table.deselectRow();
+                        card.style.visibility = 'hidden';
+                    })
                 }
             }
         )
@@ -169,6 +176,7 @@
         document.getElementById('file').value = "";
         table.clearData();
         map.removeLayer(layer_group);
+        map.setView(default_location, regular_view_dist);
     });
 
 
@@ -190,6 +198,7 @@
         card.style.visibility='visible';
         card.innerHTML = "<ul> ";
         for(let [key, value] of Object.entries(row.getData())) {
+            if(key === "") continue;
             card.innerHTML = card.innerHTML + "<li> " + key + ": " + value + "</li> ";
         }
         card.innerHTML = card.innerHTML + "</ul>";

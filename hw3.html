@@ -45,14 +45,14 @@
     <table id="general_table" style="visibility:hidden">
         <tr>
             <th>
-                <div id="tabulator_table" style="visibility: hidden;"></div>
+                <div id="tabulator_table" style="visibility: hidden"></div>
             </th>
             <th>
                 <div id="card" style="visibility: hidden"></div>
             </th>
         </tr>
     </table>
-    <div id="map" style="visibility: hidden;"></div>
+    <div id="map" style="visibility: hidden"></div>
 
 </body>
 
@@ -70,10 +70,11 @@
     let map_div = document.getElementById('map');
     let card = document.getElementById('card');
 
-    let view_dist = 10;
+    let regular_view_dist = 10;
+    let zoom_view_dist = 16;
+    let default_location = [40.730613, -73.935245];
 
-    let map = L.map('map').setView([40.730613, -73.935245], view_dist);
-    let layer_group = L.layerGroup();
+    let map = L.map('map').setView(default_location, regular_view_dist);
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoib2ZpcmFzdWxpbjMiLCJhIjoiY2t4YWwzMXo4MGlmNDJvbXd2azFodzd4ciJ9.yw08hD-wossSoLjZkqzkSA', {
         // attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 18,
@@ -81,16 +82,21 @@
         tileSize: 512,
         zoomOffset: -1
     }).addTo(map);
+    let layer_group = L.layerGroup();
 
     let table = new Tabulator("#tabulator_table", {
         selectable: 1,
+        height: 340,
+        layout: "fitData",
+        pagination: "local",
+        paginationSize: 10,
         rowSelected: function(row) {
             try {
                 if(row.getData().latitude && row.getData().longitude) {
-                    map.setView([row.getData().latitude, row.getData().longitude], 16);
+                    map.setView([row.getData().latitude, row.getData().longitude], zoom_view_dist);
                 }
                 else {
-                    map.setView([40.730613, -73.935245], view_dist);
+                    map.setView(default_location, regular_view_dist);
                 }
                 show_card(row);
             }
@@ -99,13 +105,9 @@
             }
         },
         rowDeselected: function(row) {
-            map.setView([40.730613, -73.935245], view_dist);
+            map.setView(default_location, regular_view_dist);
             card.style.visibility='hidden';
         },
-        height: 340,
-        layout: "fitData",
-        pagination: "local",
-        paginationSize: 10,
         columns: [
             {title: "Name", field: "name", headerFilter: "input", sorter: "string"},
             {title: "Host ID", field: "host_id", sorter: "number"},
@@ -167,7 +169,6 @@
         document.getElementById('file').value = "";
         table.clearData();
         map.removeLayer(layer_group);
-        // mycard.removeChild(mycard.firstChild);
     });
 
 
@@ -178,7 +179,6 @@
         download.style.visibility = "visible";
         clear.style.visibility = "visible";
         general_table.style.visibility="visible";
-        // mycard.style.visibility="visible";
         document.getElementById('file').style.visibility = "hidden";
 
         h1_page_title.innerHTML = "CSV File Data";
@@ -188,11 +188,9 @@
 
     function show_card(row) {
         card.style.visibility='visible';
-        row.getData().
         card.innerHTML = "<ul> ";
-        console.log(row);
-        for(let attr of row) {
-            card.innerHTML = card.innerHTML + "<li> " + attr + "</li> ";
+        for(let [key, value] of Object.entries(row.getData())) {
+            card.innerHTML = card.innerHTML + "<li> " + key + ": " + value + "</li> ";
         }
         card.innerHTML = card.innerHTML + "</ul>";
     }

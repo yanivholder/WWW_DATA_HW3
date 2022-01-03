@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link href="https://unpkg.com/tabulator-tables@4.8.4/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.8.4/dist/js/tabulator.min.js"></script>
+
+    <script type = "text/javascript" src ="./node_modules/papaparse/papaparse.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+          integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+            integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+            crossorigin=""></script>
+
+    <link href="hw3_design.css" rel="stylesheet">
+
+    <title>
+        Home Page
+    </title>
+    <h1 id="h1_page_title">
+        File Upload
+    </h1>
+</head>
+
+<body>
+    <label id="file_label" for="file">
+        Upload Your File
+    </label>
+    <br>
+    <input type="file" accept=".csv" id="file" name="file_name"> <!--onchange="file_browsed()">-->
+    <br><br>
+    <button type="submit" id="submit" class="button">
+        Submit
+    </button>
+    <br>
+    <button type="button" id ="clear" style="visibility: hidden" class="button">
+        Clear
+    </button>
+    <button type="button" id ="download" style="visibility: hidden" class="button">
+        Download
+    </button>
+
+    <table id="general_table" style="visibility:hidden">
+        <tr>
+            <th>
+                <div id="tabulator_table" style="visibility: hidden;"></div>
+            </th>
+            <th>
+                <div id="card" style="visibility: hidden"></div>
+            </th>
+        </tr>
+    </table>
+    <div id="map" style="visibility: hidden;"></div>
+
+</body>
+
+</html>
+
+<script>
+
+    let tabulator_table = document.getElementById('tabulator_table');
+    let submit = document.getElementById('submit');
+    let h1_page_title = document.getElementById('h1_page_title');
+    let general_table = document.getElementById('general_table');
+    let download = document.getElementById('download');
+    let clear = document.getElementById('clear');
+    let file_label = document.getElementById('file_label');
+    let map_div = document.getElementById('map');
+    let card = document.getElementById('card');
+
+    let view_dist = 10;
+
+    let map = L.map('map').setView([40.730613, -73.935245], view_dist);
+    let layer_group = L.layerGroup();
+    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoib2ZpcmFzdWxpbjMiLCJhIjoiY2t4YWwzMXo4MGlmNDJvbXd2azFodzd4ciJ9.yw08hD-wossSoLjZkqzkSA', {
+        // attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1
+    }).addTo(map);
+
+    let table = new Tabulator("#tabulator_table", {
+        selectable: 1,
+        rowSelected: function(row) {
+            try {
+                if(row.getData().latitude && row.getData().longitude) {
+                    map.setView([row.getData().latitude, row.getData().longitude], 16);
+                }
+                else {
+                    map.setView([40.730613, -73.935245], view_dist);
+                }
+                show_card(row);
+            }
+            catch(error) {
+                console.error(error.toString());
+            }
+        },
+        rowDeselected: function(row) {
+            map.setView([40.730613, -73.935245], view_dist);
+            card.style.visibility='hidden';
+        },
+        height: 340,
+        layout: "fitData",
+        pagination: "local",
+        paginationSize: 10,
+        columns: [
+            {title: "Name", field: "name", headerFilter: "input", sorter: "string"},
+            {title: "Host ID", field: "host_id", sorter: "number"},
+            {title: "ID", field: "id", sorter: "number"},
+            {title: "Neighbourhood", field: "neighbourhood", sorter: "string"},
+            {title: "Room Type", field: "room_type", sorter: "string"},
+            {title: "Price", field: "price", sorter: "number"}
+        ]
+    });
+
+
+    submit.addEventListener("click", function (e) {
+        if(document.getElementById('file').files.length === 0) return;
+
+        Papa.parse(
+            document.getElementById('file').files[0],
+            {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    table.setData(results.data);
+                    layer_group.clearLayers();
+                    for (let row of results.data) {
+                        let marker = L.marker([row.latitude, row.longitude], {title: row.name});
+                        marker.on('click', function (e) {
+                            let lat = e.latlng.lat;
+                            let lng = e.latlng.lng;
+                            map.setView([lat, lng], 15);
+                        });
+                        layer_group.addLayer(marker);
+                    }
+                    map.addLayer(layer_group);
+                }
+            }
+        )
+        fix_style_after_submit();
+    });
+
+
+    download.addEventListener("click", function () {
+        table.download("csv", document.getElementById('file').files[0].name);
+    });
+
+
+    clear.addEventListener("click", function () {
+        tabulator_table.style.visibility = "hidden";
+        map_div.style.visibility = "hidden";
+        submit.style.visibility = "visible";
+        download.style.visibility = "hidden";
+        clear.style.visibility = "hidden";
+        general_table.style.visibility="hidden";
+        card.style.visibility="hidden";
+        document.getElementById('file').style.visibility = "visible";
+
+        h1_page_title.innerHTML = "File Upload";
+        file_label.innerHTML = "Upload Your File";
+
+        document.getElementById('file').value = "";
+        table.clearData();
+        map.removeLayer(layer_group);
+        // mycard.removeChild(mycard.firstChild);
+    });
+
+
+    function fix_style_after_submit() {
+        tabulator_table.style.visibility = "visible";
+        map_div.style.visibility = "visible";
+        submit.style.visibility = "hidden";
+        download.style.visibility = "visible";
+        clear.style.visibility = "visible";
+        general_table.style.visibility="visible";
+        // mycard.style.visibility="visible";
+        document.getElementById('file').style.visibility = "hidden";
+
+        h1_page_title.innerHTML = "CSV File Data";
+        file_label.innerHTML = "The CSV table"
+    }
+
+
+    function show_card(row) {
+        card.style.visibility='visible';
+        row.getData().
+        card.innerHTML = "<ul> ";
+        console.log(row);
+        for(let attr of row) {
+            card.innerHTML = card.innerHTML + "<li> " + attr + "</li> ";
+        }
+        card.innerHTML = card.innerHTML + "</ul>";
+    }
+</script>

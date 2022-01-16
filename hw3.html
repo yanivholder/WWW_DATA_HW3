@@ -73,6 +73,7 @@
     let regular_view_dist = 10;
     let zoom_view_dist = 16;
     let default_location = [40.730613, -73.935245];
+    let is_moved_by_drag = true;
 
     let map = L.map('map').setView(default_location, regular_view_dist);
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoib2ZpcmFzdWxpbjMiLCJhIjoiY2t4YWwzMXo4MGlmNDJvbXd2azFodzd4ciJ9.yw08hD-wossSoLjZkqzkSA', {
@@ -93,6 +94,7 @@
         rowSelected: function(row) {
             try {
                 if(row.getData().latitude && row.getData().longitude) {
+                    is_moved_by_drag = false;
                     map.setView([row.getData().latitude, row.getData().longitude], zoom_view_dist);
                 }
                 else {
@@ -145,8 +147,13 @@
                     map.addLayer(layer_group);
                     map.on('movestart',function (e)
                     {
-                        table.deselectRow();
-                        card.style.visibility = 'hidden';
+                        if(is_moved_by_drag === true) {
+                            table.deselectRow();
+                            card.style.visibility = 'hidden';
+                        }
+                        else {
+                            is_moved_by_drag = true;
+                        }
                     })
                 }
             }
